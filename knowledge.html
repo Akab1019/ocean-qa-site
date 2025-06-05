@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ocean Knowledge Base</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <style>
+        #pdf-container {
+            height: 80vh;
+            overflow-y: auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        #pdf-render {
+            max-width: 100%;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            background: white;
+        }
+        #page-num {
+            min-width: 80px;
+            text-align: center;
+        }
+        .wave-bg {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1200 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" fill="%23005f73"/><path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5" fill="%23008b8b"/><path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,931.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="%2300b4d8"/></svg>');
+            background-size: cover;
+            z-index: -1;
+        }
+        .pdf-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 180, 216, 0.3);
+        }
+        .loader {
+            border-top-color: #00b4d8;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-b from-blue-50 to-cyan-100 min-h-screen relative">
+    <div class="wave-bg"></div>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-cyan-800 to-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <i class="fas fa-water text-3xl mr-3"></i>
+                    <h1 class="text-2xl md:text-3xl font-bold">Ocean Knowledge Base</h1>
+                </div>
+                <div class="relative w-full md:w-64">
+                    <input type="text" placeholder="Search PDFs..." class="w-full px-4 py-2 rounded-full text-gray-800 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <button class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-cyan-600 text-white p-1 rounded-full hover:bg-cyan-700">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- Main Content Area -->
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- PDF List Section -->
+            <div class="w-full lg:w-1/3 bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="bg-cyan-700 text-white p-4">
+                    <h2 class="text-xl font-semibold flex items-center">
+                        <i class="fas fa-file-pdf mr-2"></i> Marine Research Documents
+                    </h2>
+                    <p class="text-cyan-100 text-sm mt-1">Browse our collection of ocean research papers</p>
+                </div>
+                <div class="p-4">
+                    <!-- Filter/Sort Controls -->
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 bg-cyan-100 text-cyan-800 rounded-full text-sm hover:bg-cyan-200">
+                                <i class="fas fa-filter mr-1"></i> Filter
+                            </button>
+                            <button class="px-3 py-1 bg-cyan-100 text-cyan-800 rounded-full text-sm hover:bg-cyan-200">
+                                <i class="fas fa-sort mr-1"></i> Sort
+                            </button>
+                        </div>
+                        <span class="text-gray-500 text-sm">12 documents</span>
+                    </div>
+
+                    <!-- PDF List -->
+                    <div class="space-y-3 max-h-[60vh] overflow-y-auto pr-2" id="pdf-list">
+                        <!-- PDF items will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- PDF Viewer Section -->
+            <div class="w-full lg:w-2/3">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden h-full">
+                    <div class="bg-blue-600 text-white p-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-book-open mr-2"></i> Document Viewer
+                        </h2>
+                        <p class="text-blue-100 text-sm mt-1">Select a document to view its contents</p>
+                    </div>
+                    <div class="p-4">
+                        <!-- PDF Viewer -->
+                        <div id="pdf-viewer-placeholder" class="text-center py-16 bg-gray-50 rounded-lg">
+                            <i class="fas fa-file-pdf text-6xl text-gray-300 mb-4"></i>
+                            <h3 class="text-xl text-gray-500 font-medium">No document selected</h3>
+                            <p class="text-gray-400 mt-2">Choose a PDF from the list to view its contents</p>
+                        </div>
+                        <div id="pdf-container" class="hidden">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 id="pdf-title" class="text-lg font-semibold text-gray-800"></h3>
+                                <div class="flex space-x-2">
+                                    <button id="prev-page" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <span id="page-num" class="px-3 py-1 text-gray-700">Page 1</span>
+                                    <span class="px-3 py-1 text-gray-500">of</span>
+                                    <span id="page-count" class="px-3 py-1 text-gray-700">1</span>
+                                    <button id="next-page" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:opacity-50">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="flex justify-center">
+                                <div id="pdf-loader" class="hidden">
+                                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+                                    <p class="text-gray-600">Loading PDF...</p>
+                                </div>
+                                <canvas id="pdf-render" class="border rounded shadow-sm max-w-full"></canvas>
+                            </div>
+                            <div class="mt-4 flex justify-between">
+                                <button id="zoom-in" class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                                    <i class="fas fa-search-plus mr-1"></i> Zoom In
+                                </button>
+                                <button id="zoom-out" class="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                                    <i class="fas fa-search-minus mr-1"></i> Zoom Out
+                                </button>
+                                <button id="download-pdf" class="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">
+                                    <i class="fas fa-download mr-1"></i> Download
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Tags -->
+        <div class="mt-8 bg-white p-6 rounded-xl shadow-md">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-tags mr-2 text-cyan-600"></i> Explore by Category
+            </h3>
+            <div class="flex flex-wrap gap-2">
+                <a href="#" class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full hover:bg-blue-200 transition-all">
+                    Marine Biology
+                </a>
+                <a href="#" class="px-4 py-2 bg-teal-100 text-teal-800 rounded-full hover:bg-teal-200 transition-all">
+                    Oceanography
+                </a>
+                <a href="#" class="px-4 py-2 bg-cyan-100 text-cyan-800 rounded-full hover:bg-cyan-200 transition-all">
+                    Climate Change
+                </a>
+                <a href="#" class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full hover:bg-indigo-200 transition-all">
+                    Coral Reefs
+                </a>
+                <a href="#" class="px-4 py-2 bg-purple-100 text-purple-800 rounded-full hover:bg-purple-200 transition-all">
+                    Marine Conservation
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-cyan-900 text-white py-8 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-water mr-2"></i> Ocean Knowledge
+                    </h3>
+                    <p class="text-cyan-100">A comprehensive repository of marine research and studies dedicated to ocean conservation and education.</p>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-cyan-100 hover:text-white transition">Home</a></li>
+                        <li><a href="#" class="text-cyan-100 hover:text-white transition">Browse Documents</a></li>
+                        <li><a href="#" class="text-cyan-100 hover:text-white transition">Submit Research</a></li>
+                        <li><a href="#" class="text-cyan-100 hover:text-white transition">About Us</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold mb-4">Contact Us</h3>
+                    <ul class="space-y-2 text-cyan-100">
+                        <li><i class="fas fa-envelope mr-2"></i> contact@oceanknowledge.org</li>
+                        <li><i class="fas fa-phone mr-2"></i> +1 (555) 123-4567</li>
+                        <li><i class="fas fa-map-marker-alt mr-2"></i> 123 Ocean Drive, Marine City</li>
+                    </ul>
+                    <div class="flex space-x-4 mt-4">
+                        <a href="#" class="text-white hover:text-cyan-300"><i class="fab fa-twitter text-xl"></i></a>
+                        <a href="#" class="text-white hover:text-cyan-300"><i class="fab fa-facebook text-xl"></i></a>
+                        <a href="#" class="text-white hover:text-cyan-300"><i class="fab fa-instagram text-xl"></i></a>
+                        <a href="#" class="text-white hover:text-cyan-300"><i class="fab fa-linkedin text-xl"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-cyan-800 mt-8 pt-6 text-center text-cyan-100">
+                <p>&copy; 2023 Ocean Knowledge Base. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+
+        // Sample PDF data - in a real app, this would come from an API
+        const pdfDatabase = [
+            {
+                id: 1,
+                title: "Marine Biodiversity in Coral Reefs",
+                author: "Dr. Emily Watson",
+                year: 2022,
+                pages: 24,
+                url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                category: "Marine Biology",
+                summary: "A comprehensive study on species diversity in coral reef ecosystems across the Pacific."
+            },
+            {
+                id: 2,
+                title: "Ocean Currents and Climate Patterns",
+                author: "Prof. Michael Chen",
+                year: 2021,
+                pages: 18,
+                url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                category: "Oceanography",
+                summary: "Analysis of how ocean currents influence global climate systems and weather patterns."
+            },
+            {
+                id: 3,
+                title: "Plastic Pollution in Marine Ecosystems",
+                author: "Dr. Sarah Johnson",
+                year: 2023,
+                pages: 32,
+                url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                category: "Marine Conservation",
+                summary: "Investigation of microplastic accumulation and its effects on marine life."
+            },
+            {
+                id: 4,
+                title: "Deep Sea Exploration Technologies",
+                author: "Dr. Robert Langford",
+                year: 2020,
+                pages: 26,
+                url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                category: "Oceanography",
+                summary: "Review of current technologies used in deep sea research expeditions."
+            },
+            {
+                id: 5,
+                title: "Impact of Rising Sea Temperatures",
+                author: "Dr. Lisa Park",
+                year: 2022,
+                pages: 22,
+                url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                category: "Climate Change",
+                summary: "Study on the effects of global warming on marine species migration patterns."
+            },
+            {
+                id: 6,
+                title: "Protecting Endangered Marine Species",
+                author: "Dr. James Wilson",
+                year: 2021,
+                pages: 28,
+                url: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                category: "Marine Conservation",
+                summary: "Proposed conservation strategies for endangered ocean species."
+            }
+        ];
+
+        // Display PDF list
+        function displayPdfList() {
+            const pdfListContainer = document.getElementById('pdf-list');
+            pdfListContainer.innerHTML = '';
+
+            pdfDatabase.forEach(pdf => {
+                const pdfItem = document.createElement('div');
+                pdfItem.className = 'pdf-item bg-white p-4 rounded-lg shadow-sm border border-gray-100 cursor-pointer transition-all hover:border-cyan-300';
+                pdfItem.setAttribute('data-id', pdf.id);
+                pdfItem.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-800">${pdf.title}</h3>
+                            <p class="text-sm text-gray-600">${pdf.author} • ${pdf.year}</p>
+                            <div class="flex items-center mt-2 text-sm">
+                                <span class="px-2 py-1 bg-cyan-100 text-cyan-800 rounded-full mr-2">${pdf.category}</span>
+                                <span class="text-gray-500"><i class="fas fa-file-alt mr-1"></i> ${pdf.pages} pages</span>
+                            </div>
+                        </div>
+                        <i class="fas fa-file-pdf text-2xl text-red-500"></i>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600 line-clamp-2">${pdf.summary}</p>
+                `;
+                // 跳转到详情页
+                pdfItem.addEventListener('click', () => {
+                    pdf.url = 'pdf/40ab46a3880f3fd7250594650331f779_5369c7b0a0113a39a6911e3405798415_8.pdf'
+                    window.location.href = `pdf_viewer.html?url=${encodeURIComponent(pdf.url)}&title=${encodeURIComponent(pdf.title)}`;
+                });
+                pdfListContainer.appendChild(pdfItem);
+            });
+        }
+
+        // PDF Viewer State
+        let pdfDoc = null,
+            pageNum = 1,
+            pageRendering = false,
+            pageNumPending = null,
+            scale = 1.2,
+            canvas = document.getElementById('pdf-render'),
+            ctx = canvas.getContext('2d');
+
+        // Render the PDF page
+        function renderPage(num) {
+            pageRendering = true;
+            document.getElementById('pdf-loader').classList.remove('hidden');
+            
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({ scale: scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                
+                const renderTask = page.render(renderContext);
+                
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    document.getElementById('pdf-loader').classList.add('hidden');
+                    
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+            
+            document.getElementById('page-num').textContent = `Page ${num}`;
+        }
+
+        // Queue up the page rendering
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        // Go to previous page
+        function onPrevPage() {
+            if (pageNum <= 1) {
+                return;
+            }
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+        document.getElementById('prev-page').addEventListener('click', onPrevPage);
+
+        // Go to next page
+        function onNextPage() {
+            if (pageNum >= pdfDoc.numPages) {
+                return;
+            }
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+        document.getElementById('next-page').addEventListener('click', onNextPage);
+
+        // Zoom in
+        function zoomIn() {
+            scale += 0.1;
+            queueRenderPage(pageNum);
+        }
+        document.getElementById('zoom-in').addEventListener('click', zoomIn);
+
+        // Zoom out
+        function zoomOut() {
+            if (scale <= 0.5) {
+                return;
+            }
+            scale -= 0.1;
+            queueRenderPage(pageNum);
+        }
+        document.getElementById('zoom-out').addEventListener('click', zoomOut);
+
+        // Load a PDF file
+        function loadPdf(pdfId) {
+            const pdfData = pdfDatabase.find(pdf => pdf.id === pdfId);
+            if (!pdfData) return;
+
+            // Show the selected PDF title
+            document.getElementById('pdf-title').textContent = pdfData.title;
+            
+            // Hide placeholder, show viewer
+            document.getElementById('pdf-viewer-placeholder').classList.add('hidden');
+            document.getElementById('pdf-container').classList.remove('hidden');
+            
+            // Show loading state
+            document.getElementById('pdf-loader').classList.remove('hidden');
+            document.getElementById('download-pdf').setAttribute('data-url', pdfData.url);
+
+            // Reset scale and page number
+            scale = 1.2;
+            pageNum = 1;
+
+            // Load the PDF document
+            pdfjsLib.getDocument({
+                url: pdfData.url,
+                cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@2.10.377/cmaps/',
+                cMapPacked: true
+            }).promise.then(function(pdfDoc_) {
+                pdfDoc = pdfDoc_;
+                document.getElementById('page-count').textContent = pdfDoc.numPages;
+                
+                // Reset buttons state
+                document.getElementById('prev-page').disabled = pageNum <= 1;
+                document.getElementById('next-page').disabled = pageNum >= pdfDoc.numPages;
+                
+                // Render the first page
+                renderPage(pageNum);
+            }).catch(error => {
+                console.error('Error loading PDF:', error);
+                document.getElementById('pdf-loader').classList.add('hidden');
+                alert('Error loading PDF. Please try again.');
+            });
+        }
+
+        // Download PDF handler
+        document.getElementById('download-pdf').addEventListener('click', function() {
+            const pdfUrl = this.getAttribute('data-url');
+            if (pdfUrl) {
+                window.open(pdfUrl, '_blank');
+            }
+        });
+
+        // Initialize the page
+        window.onload = function() {
+            displayPdfList();
+            
+            // Sample: Load first PDF by default (optional)
+            // loadPdf(1);
+        };
+    </script>
+</body>
+</html>

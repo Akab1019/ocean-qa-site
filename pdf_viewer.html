@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF 详情</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.tailwindcss.com">
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center">
+    <h1 id="pdf-title" class="text-2xl font-bold my-4"></h1>
+    <canvas id="pdf-render" class="border rounded shadow-sm max-w-full"></canvas>
+    <div class="mt-4 flex space-x-2">
+        <button id="prev-page" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">上一页</button>
+        <span id="page-num" class="px-3 py-1 text-gray-700">第1页</span>
+        <span class="px-3 py-1 text-gray-500">/</span>
+        <span id="page-count" class="px-3 py-1 text-gray-700">1</span>
+        <button id="next-page" class="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">下一页</button>
+    </div>
+    <script>
+        // 获取 URL 参数
+        function getQueryParam(name) {
+            const url = new URL(window.location.href);
+            return url.searchParams.get(name);
+        }
+
+        const pdfUrl = getQueryParam('url');
+        const pdfTitle = getQueryParam('title') || 'PDF 详情';
+
+        document.getElementById('pdf-title').textContent = decodeURIComponent(pdfTitle);
+
+        let pdfDoc = null,
+            pageNum = 1,
+            pageRendering = false,
+            pageNumPending = null,
+            scale = 1.2,
+            canvas = document.getElementById('pdf-render'),
+            ctx = canvas.getContext('2d');
+
+        function renderPage(num) {
+            pageRendering = true;
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({ scale: scale });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                const renderTask = page.render(renderContext);
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                });
+            });
+            document.getElementById('page-num').textContent = `第${num}页`;
+        }
+
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+
+        function onPrevPage() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+        function onNextPage() {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+
+        document.getElementById('prev-page').addEventListener('click', onPrevPage);
+        document.getElementById('next-page').addEventListener('click', onNextPage);
+
+        if (pdfUrl) {
+            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdfDoc_) {
+                pdfDoc = pdfDoc_;
+                document.getElementById('page-count').textContent = pdfDoc.numPages;
+                renderPage(pageNum);
+            });
+        } else {
+            document.getElementById('pdf-title').textContent = "未指定PDF文件";
+        }
+    </script>
+</body>
+</html>
