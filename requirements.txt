@@ -2,7 +2,7 @@ flask
 flask-cors
 gunicorn
 Flask
-request
+requests
 jsonify
 langchain_huggingface
 langchain_chroma
