@@ -1,0 +1,9 @@
+flask
+flask-cors
+gunicorn
+Flask
+request
+jsonify
+langchain_huggingface
+langchain_chroma
+openai
