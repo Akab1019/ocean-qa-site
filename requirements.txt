@@ -1,9 +1,7 @@
 flask
 flask-cors
 gunicorn
-Flask
 requests
-jsonify
-langchain_huggingface
-langchain_chroma
+langchain-huggingface
+langchain-chroma
 openai
